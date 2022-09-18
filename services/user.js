@@ -3,14 +3,14 @@ import bcrypt from "bcrypt";
 import UserModel from "../models/User.js";
 
 class UserService {
-  async register(body) {
+  async register(body, avatarUrl) {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(body.password, salt);
     const doc = new UserModel({
       fullName: body.fullName,
       email: body.email,
       passwordHash: hash,
-      avatarUrl: body.avatarUrl,
+      avatarUrl,
     });
     const user = await doc.save();
     const token = jwt.sign(
@@ -28,16 +28,14 @@ class UserService {
   async login(body) {
     const user = await UserModel.findOne({ email: body.email });
     if (!user) {
-      return { message: "Don`t find" };
+      throw new Error("Wrong email or password!");
     }
     const isValidPass = await bcrypt.compare(
       body.password,
       user._doc.passwordHash
     );
     if (!isValidPass) {
-      return {
-        message: "Invalid login or password",
-      };
+      throw new Error("Wrong email or password!");
     }
     const token = jwt.sign(
       {
@@ -57,7 +55,7 @@ class UserService {
   async getMe(userId) {
     const user = await UserModel.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "no access" });
+      throw new Error("no access");
     }
     const { passwordHash, ...userData } = user._doc;
     return userData;
